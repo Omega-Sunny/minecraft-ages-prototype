@@ -1,0 +1,8 @@
+{
+  "id": "atomic",
+  "name": "Atomic Age",
+  "order": 5,
+  "locked_mod_ids": [
+    "ae2"
+  ]
+}

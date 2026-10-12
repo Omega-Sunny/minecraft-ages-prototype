@@ -1,0 +1,8 @@
+{
+  "id": "bronze",
+  "name": "Bronze Age",
+  "order": 1,
+  "wild_spawn_mod_ids": [
+    "iceandfire"
+  ]
+}

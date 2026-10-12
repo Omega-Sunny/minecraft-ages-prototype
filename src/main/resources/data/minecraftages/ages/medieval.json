@@ -1,0 +1,11 @@
+{
+  "id": "medieval",
+  "name": "Medieval Age",
+  "order": 2,
+  "locked_mod_ids": [
+    "waystones"
+  ],
+  "wild_spawn_mod_ids": [
+    "iceandfire"
+  ]
+}

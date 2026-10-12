@@ -1,0 +1,59 @@
+{
+  "ages": [
+    {
+      "id": "stone",
+      "name": "Stone Age",
+      "mods": [
+        "Ecliptic Seasons",
+        "Overgeared",
+        "Spawn"
+      ]
+    },
+    {
+      "id": "bronze",
+      "name": "Bronze Age",
+      "mods": []
+    },
+    {
+      "id": "medieval",
+      "name": "Medieval Age",
+      "mods": [
+        "Twilight Forest",
+        "Waystones"
+      ],
+      "rules": [
+        {
+          "target": "Waystones",
+          "type": "mod_access",
+          "unlocked_at": "medieval"
+        }
+      ]
+    },
+    {
+      "id": "steam",
+      "name": "Steam Age",
+      "mods": [
+        "Create",
+        "Create Aeronautics",
+        "Create: Copycats",
+        "Create Crafts & Additions",
+        "Create Deco",
+        "The Aether"
+      ]
+    },
+    {
+      "id": "modern",
+      "name": "Modern Age",
+      "mods": [
+        "Create Diesel Generators"
+      ]
+    },
+    {
+      "id": "atomic",
+      "name": "Atomic Age",
+      "mods": [
+        "Applied Energistics 2"
+      ]
+    }
+  ]
+}

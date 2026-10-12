@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.minecraftages.ages.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "CraftingMenuAccessor",
+    "CraftingMenuMixin",
+    "RecipeManagerMixin",
+    "SequencedAssemblyRecipeMixin",
+    "ServerRecipeBookMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,0 +1,61 @@
+plugins {
+    id 'net.neoforged.moddev' version '2.0.107'
+}
+
+version = project.mod_version
+group = project.mod_group_id
+
+base {
+    archivesName = project.mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+repositories {
+    maven {
+        name = "XaeroMaven"
+        url = "https://chocolateminecraft.com/maven"
+    }
+    maven {
+        name = "BlameJaredMaven"
+        url = "https://maven.blamejared.com"
+    }
+}
+
+dependencies {
+    implementation "xaero.pac:open-parties-and-claims-neoforge-1.21.1:0.32.7"
+    compileOnly "mezz.jei:jei-1.21.1-neoforge:19.57.0.451"
+}
+
+neoForge {
+    version = '21.1.172'
+
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+    }
+
+    mods {
+        ages {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+tasks.withType(ProcessResources).configureEach {
+    var properties = [
+        mod_id: project.mod_id,
+        mod_name: project.mod_name,
+        mod_version: project.mod_version,
+        mod_description: project.mod_description
+    ]
+    inputs.properties properties
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand properties
+    }
+}
