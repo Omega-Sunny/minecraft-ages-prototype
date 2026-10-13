@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.agesofelysium.ages.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "CraftingMenuAccessor",
+    "CraftingMenuMixin",
+    "ChunkGeneratorStructureMixin",
+    "RecipeManagerMixin",
+    "SequencedAssemblyRecipeMixin",
+    "ServerRecipeBookMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

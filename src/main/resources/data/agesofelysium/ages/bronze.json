@@ -1,0 +1,23 @@
+{
+  "id": "bronze",
+  "name": "Bronze Age",
+  "order": 1,
+  "wild_spawn_mod_ids": [
+    "iceandfire"
+  ],
+  "unlock_structure_ids": [
+    "iceandfire:cyclops_cave",
+    "iceandfire:fire_dragon_cave",
+    "iceandfire:fire_dragon_roost",
+    "iceandfire:gorgon_temple",
+    "iceandfire:graveyard",
+    "iceandfire:hydra_cave",
+    "iceandfire:ice_dragon_cave",
+    "iceandfire:ice_dragon_roost",
+    "iceandfire:lightning_dragon_cave",
+    "iceandfire:lightning_dragon_roost",
+    "iceandfire:mausoleum",
+    "iceandfire:pixie_village",
+    "iceandfire:siren_island"
+  ]
+}

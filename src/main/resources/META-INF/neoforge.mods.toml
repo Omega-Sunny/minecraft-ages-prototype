@@ -24,7 +24,7 @@ side="BOTH"
 
 [[dependencies.${mod_id}]]
 modId="openpartiesandclaims"
-type="required"
+type="optional"
 versionRange="[0.32.7,)"
 ordering="AFTER"
 side="SERVER"
@@ -37,4 +37,4 @@ ordering="AFTER"
 side="CLIENT"
 
 [[mixins]]
-config="ages.mixins.json"
+config="agesofelysium.mixins.json"

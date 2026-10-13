@@ -41,7 +41,7 @@ neoForge {
     }
 
     mods {
-        ages {
+        agesofelysium {
             sourceSet sourceSets.main
         }
     }
