@@ -21,6 +21,11 @@ public final class ClientAgeRecipeState {
         return Set.copyOf(LOCKED_RECIPE_IDS);
     }
 
+    /** Returns whether the server's latest lock snapshot permits the supplied recipe ID. */
+    public static boolean isRecipeUnlocked(ResourceLocation recipeId) {
+        return !LOCKED_RECIPE_IDS.contains(recipeId);
+    }
+
     /** Returns an immutable snapshot of mod namespaces currently locked by the server. */
     public static Set<String> getLockedModIds() {
         return Set.copyOf(LOCKED_MOD_IDS);

@@ -48,6 +48,7 @@ public final class AgeCommands {
                             if (!savedData.getCurrentAgeId().equals(age.id())) {
                                 savedData.setCurrentAgeId(age.id());
                                 RetroGenerationScheduler.onAgeChanged(server, age.id());
+                                DimensionAccessEvents.enforceCurrentDimensions(server);
                                 AgeCraftingRules.refreshOpenCraftingMenus(server);
                                 AgeRecipeBookSync.syncAll(server);
                                 AgeRecipeNetworking.sendToAll(server);

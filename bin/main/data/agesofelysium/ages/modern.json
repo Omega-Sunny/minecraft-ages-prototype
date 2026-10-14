@@ -1,0 +1,9 @@
+{
+  "id": "modern",
+  "name": "Modern Age",
+  "order": 4,
+    "locked_mod_ids": [
+        "createaddition",
+        "createdieselgenerators"
+    ]   
+}

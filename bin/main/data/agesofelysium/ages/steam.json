@@ -1,0 +1,21 @@
+{
+  "id": "steam",
+  "name": "Steam Age",
+  "order": 3,
+  "locked_mod_ids": [
+    "create",
+    "aeronautics_bundled",
+    "aeronautics",
+    "offroad",
+    "simulated",
+    "copycats",
+    "createdeco",
+    "aether"
+  ],
+  "unlock_dimension_ids": [
+    "aether:the_aether"
+  ],
+  "unlock_recipe_ids": [
+    "create:mixing/brass_ingot"
+  ]
+}

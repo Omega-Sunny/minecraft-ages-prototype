@@ -13,6 +13,11 @@ public interface RetroStructureHandler {
         return AgeCatalog.isStructureUnlocked(id(), currentAgeId);
     }
 
+    /** Restricts handler work to configured dimensions when needed. */
+    default boolean isApplicableToDimension(ResourceLocation dimensionId) {
+        return true;
+    }
+
     /** Finds a structure candidate starting from a loaded chunk, or null when none applies. */
     Candidate findCandidate(ServerLevel level, ChunkPos startChunk);
 

@@ -57,9 +57,13 @@ Supported fields:
 | `order` | Unique nonnegative progression index. The lowest-order age is the default; orders need not start at zero. |
 | `locked_mod_ids` | Mod namespaces that unlock at this age. A namespace may have only one default unlock age. Unlisted namespaces are always unlocked by this rule. |
 | `wild_spawn_mod_ids` | Namespaces whose mobs may naturally spawn during this age. A namespace listed across multiple ages is allowed only in those ages. |
+| `wild_spawn_entity_ids` | Exact entity IDs allowed to spawn during this age. If any entity rules exist for a namespace, only entity IDs listed in an age are allowed; other entities in that namespace are denied. |
 | `unlock_recipe_ids` | Full recipe IDs whose individual unlock age is this age. An explicit recipe assignment overrides its owning mod's namespace lock. |
 | `unlock_item_ids` | Full item IDs whose individual unlock age is this age. An explicit item assignment overrides its owning mod's namespace lock for player item access and JEI visibility. |
 | `unlock_structure_ids` | Full structure IDs unlocked for normal generation and retro-generation at this age. |
+| `unlock_placed_feature_ids` | Full placed-feature IDs blocked from generating in new chunks until this age. |
+| `retro_generate_placed_features` | Opt-in retro rules with `id`, `radius_chunks` (0-8), and `dimensions`; an empty dimension list means any dimension. Each feature must be unlocked in this same age. |
+| `unlock_dimension_ids` | Dimension registry IDs that players cannot enter before this age. |
 
 ### Rule Precedence
 
@@ -81,7 +85,7 @@ Remove `create:mixing/brass_ingot` from Steam's `unlock_recipe_ids` if it was th
 
 ### Validation and Reload
 
-The catalog parser builds all maps locally, validates them, and only then publishes an immutable `Snapshot` through a `volatile` field. Readers therefore see either the last valid snapshot or the newly validated snapshot, not partially populated maps. Invalid JSON, malformed or duplicate IDs, blank names, negative or duplicate orders, an empty catalog, duplicate namespace unlock assignments, malformed recipe/item/structure IDs, or duplicate recipe/item/structure assignments cause the new catalog to be rejected. The reload listener logs the error and retains its previous valid snapshot.
+The catalog parser builds all maps locally, validates them, and only then publishes an immutable `Snapshot` through a `volatile` field. Readers therefore see either the last valid snapshot or the newly validated snapshot, not partially populated maps. Invalid JSON, malformed or duplicate IDs, blank names, negative or duplicate orders, an empty catalog, duplicate namespace unlock assignments, malformed recipe/item/structure/placed-feature/dimension IDs, or duplicate assignments cause the new catalog to be rejected. Retro-feature entries must have a bounded radius and match a placed feature unlocked in the same age. The reload listener logs the error and retains its previous valid snapshot.
 
 Run `/reload` to reload datapacks. On a successful reload, the server refreshes open vanilla crafting menus, reconciles connected players' vanilla recipe books, and sends new lock state to clients. Datapack resource priority follows Minecraft's normal resource-pack rules; to override a built-in definition, use the same resource ID, such as `data/agesofelysium/ages/steam.json`, in a higher-priority pack.
 
@@ -123,13 +127,13 @@ This gate is about player interactions. It does not cover every mod-internal cal
 
 ### Wild Mob Spawning
 
-`AgeMobSpawnEvents` listens to NeoForge's `MobSpawnEvent.SpawnPlacementCheck`. That event is raised on the server before spawn placement succeeds and provides both the `EntityType<?>` and `MobSpawnType`. The code checks only `NATURAL` and `CHUNK_GENERATION`, obtains the entity namespace through `BuiltInRegistries.ENTITY_TYPE`, and sets the event result to `FAIL` when the namespace is not allowed in the current age.
+`AgeMobSpawnEvents` listens to NeoForge's `MobSpawnEvent.SpawnPlacementCheck`. That event is raised on the server before spawn placement succeeds and provides both the `EntityType<?>` and `MobSpawnType`. The code checks only `NATURAL` and `CHUNK_GENERATION`, obtains the full entity ID through `BuiltInRegistries.ENTITY_TYPE`, and sets the event result to `FAIL` when the exact entity or its namespace is not allowed in the current age. Namespace rules remain the default; adding any entity-specific rule for a namespace switches that namespace to allowlist behavior.
 
 This hook is deliberately not `EntityJoinLevelEvent`: it does not run when saved entities are loaded from chunks. Existing mobs therefore remain. Spawners, spawn eggs, commands, breeding, structure spawns, and other non-natural spawn types are not rejected by this rule. Some spawner custom-rule flows do not invoke placement checks, which is another reason not to describe this as a universal entity ban.
 
 ### Recipe Lookup, Crafting, and Recipe Book
 
-`RecipeManagerMixin` injects at the return of each 1.21.1 `RecipeManager.getRecipeFor` overload. If a server-side lookup found a `RecipeHolder` whose ID is currently locked, it replaces the result with `Optional.empty()`. This is shared by many machines and recipe consumers, so it is a useful common enforcement boundary. It is not guaranteed to cover a mod that scans recipes or uses a private cache directly.
+`RecipeManagerMixin` filters the return of each 1.21.1 `RecipeManager.getRecipeFor` overload and `getAllRecipesFor`. Server-side lookups use the active age catalog; clients use the synchronized locked-recipe snapshot. The `getAllRecipesFor` filter covers mods such as Overgeared that scan all recipes of a type when searching for forging matches. A mod that bypasses `RecipeManager` or uses a private cache still needs a dedicated integration.
 
 Vanilla crafting has a separate result path. `CraftingMenuMixin` intercepts `slotChangedCraftingGrid` on the server before the result can be taken. For a locked recipe it clears the result container, updates the remote slot, sends `ClientboundContainerSetSlotPacket`, and cancels the original calculation. `CraftingMenuAccessor` is a Mixin `@Accessor` for the private `craftSlots` field; `AgeCraftingRules` uses it to force open crafting screens to recalculate after an age change.
 
@@ -155,6 +159,12 @@ JEI's `IIngredientVisibility` supports hiding/unhiding item and fluid ingredient
 ## Structure Worldgen and Retro-Generation
 
 `unlock_structure_ids` gives a registered worldgen structure an age. `ChunkGeneratorStructureMixin` hooks the normal `tryGenerateStructure` path and rejects configured structure starts while the current age is earlier. Unconfigured structures are unchanged. This prevents the structure from spawning into newly generated chunks before unlock while leaving the structure mod installed and its resources available.
+
+`unlock_placed_feature_ids` gates individual registered `PlacedFeature`s through `PlacedFeatureMixin.placeWithBiomeCheck`. This covers worldgen features that are not structures, such as Ice and Fire's dragon skeleton placements. The rule suppresses new chunk generation before unlock.
+
+`retro_generate_placed_features` is a separate opt-in. `PlacedFeatureRetroGenerationHandler` replays the selected feature from a deterministic world-seed/feature/chunk seed, only in the configured dimensions, and only when every chunk in its declared radius is already loaded. The scheduler applies the optional OPAC claim check to that full radius before placement. Empty `dimensions` means the feature's own placement rules choose applicable dimensions. The current pack opts Waystone variants in at radius zero and Create's layered ore features at radius two. Large/custom YUNG features are age-gated but remain new-chunk-only until dedicated footprint handlers are implemented.
+
+`unlock_dimension_ids` is enforced by `DimensionAccessEvents` on entity travel. Players already inside a dimension that becomes locked are returned to the Overworld after login, age change, or datapack reload. The built-in `aether:the_aether` dimension and Aether item namespace unlock in Steam Age.
 
 `RetroGenerationScheduler` queues already-loaded chunks within eight chunks of players at age changes and discovers other old chunks on chunk load. `ServerTickEvent.Post` processes at most four tasks per tick. It never force-loads candidate chunks. Pending tasks are persisted, retried if their footprint is not currently loaded, and completed checks are remembered. Completion markers are cleared when the age changes or the catalog reloads so newly eligible structures can be reconsidered.
 
@@ -197,7 +207,7 @@ Useful smoke checks:
 2. In Stone Age, verify a recipe configured for Modern is absent from crafting results and the vanilla recipe book; verify JEI hides the recipe and output when installed.
 3. Set the age to Modern and check that open crafting screens, recipe-book knowledge, and JEI visibility update without reconnecting.
 4. Test a namespace lock such as Create or AE2 and confirm right-click prediction does not consume the held stack before unlock.
-5. With an Ice and Fire build installed, compare natural spawning in Bronze/Medieval with other ages; separately confirm saved mobs and spawn eggs remain unaffected.
+5. With Ice and Fire installed, confirm its items are locked in Stone and unlock in Bronze; compare natural spawning in Bronze/Medieval with other ages, and confirm saved mobs and spawn eggs remain unaffected.
 6. Configure a structure ID from an installed structure mod, verify no new starts before its configured age, then unlock it and check an old unclaimed area for a retro-generated structure. Repeat over a claimed area and confirm it is skipped; verify existing structures/entities survive age changes.
 
 Compile/build checks do not launch Minecraft, apply mixins in a running game, or verify a mod's private machine pathways. Treat those as in-game integration tests.

@@ -5,8 +5,41 @@
   "locked_mod_ids": [
     "waystones"
   ],
+  "unlock_placed_feature_ids": [
+    "waystones:blackstone_waystone",
+    "waystones:deepslate_waystone",
+    "waystones:end_stone_waystone",
+    "waystones:mossy_waystone",
+    "waystones:mud_bricks_waystone",
+    "waystones:prismarine_waystone",
+    "waystones:purpur_waystone",
+    "waystones:red_nether_bricks_waystone",
+    "waystones:sandy_waystone",
+    "waystones:waystone"
+  ],
+  "retro_generate_placed_features": [
+    {"id": "waystones:blackstone_waystone", "radius_chunks": 0, "dimensions": []},
+    {"id": "waystones:deepslate_waystone", "radius_chunks": 0, "dimensions": []},
+    {"id": "waystones:end_stone_waystone", "radius_chunks": 0, "dimensions": []},
+    {"id": "waystones:mossy_waystone", "radius_chunks": 0, "dimensions": []},
+    {"id": "waystones:mud_bricks_waystone", "radius_chunks": 0, "dimensions": []},
+    {"id": "waystones:prismarine_waystone", "radius_chunks": 0, "dimensions": []},
+    {"id": "waystones:purpur_waystone", "radius_chunks": 0, "dimensions": []},
+    {"id": "waystones:red_nether_bricks_waystone", "radius_chunks": 0, "dimensions": []},
+    {"id": "waystones:sandy_waystone", "radius_chunks": 0, "dimensions": []},
+    {"id": "waystones:waystone", "radius_chunks": 0, "dimensions": []}
+  ],
   "unlock_structure_ids": [
-    "skyvillages:skyvillage"
+    "skyvillages:skyvillage",
+    "iceandfire:fire_dragon_cave",
+    "iceandfire:fire_dragon_roost",
+    "iceandfire:ice_dragon_cave",
+    "iceandfire:ice_dragon_roost",
+    "iceandfire:lightning_dragon_cave",
+    "iceandfire:lightning_dragon_roost"
+  ],
+  "unlock_dimension_ids": [
+    "minecraft:the_nether"
   ],
   "wild_spawn_mod_ids": [
     "iceandfire"

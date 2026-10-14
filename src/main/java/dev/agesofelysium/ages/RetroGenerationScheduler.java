@@ -63,7 +63,7 @@ public final class RetroGenerationScheduler {
     private static void enqueue(ServerLevel level, ChunkPos chunk, String currentAge) {
         RetroGenerationData data = RetroGenerationData.get(level.getServer());
         for (RetroStructureHandler handler : RetroGenerationRegistry.handlers(level.registryAccess())) {
-            if (handler.isUnlocked(currentAge)) {
+            if (handler.isUnlocked(currentAge) && handler.isApplicableToDimension(level.dimension().location())) {
                 data.enqueue(level.dimension().location(), chunk, handler.id());
             }
         }
@@ -85,6 +85,10 @@ public final class RetroGenerationScheduler {
         RetroStructureHandler handler = RetroGenerationRegistry.get(task.handlerId(), level.registryAccess());
         if (handler == null || !handler.isUnlocked(AgeSavedData.get(server).getCurrentAgeId())) {
             data.defer(task);
+            return;
+        }
+        if (!handler.isApplicableToDimension(level.dimension().location())) {
+            data.markCompleted(task);
             return;
         }
 

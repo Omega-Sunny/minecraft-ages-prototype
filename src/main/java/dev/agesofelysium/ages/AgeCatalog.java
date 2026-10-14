@@ -67,9 +67,13 @@ public final class AgeCatalog {
         return unlockAgeId == null || isAtLeast(currentAgeId, unlockAgeId);
     }
 
-    /** Allows natural spawning for unconfigured namespaces or explicitly listed ages. */
-    public static boolean isWildSpawnAllowed(String modId, String currentAgeId) {
-        Set<String> allowedAges = current.wildSpawnAges().get(modId);
+    /** Applies exact entity allow-lists before falling back to namespace spawn windows. */
+    public static boolean isWildSpawnAllowed(ResourceLocation entityId, String currentAgeId) {
+        if (current.wildSpawnEntityNamespaces().contains(entityId.getNamespace())) {
+            Set<String> entityAllowedAges = current.wildSpawnEntityAges().get(entityId);
+            return entityAllowedAges != null && entityAllowedAges.contains(currentAgeId);
+        }
+        Set<String> allowedAges = current.wildSpawnAges().get(entityId.getNamespace());
         return allowedAges == null || allowedAges.contains(currentAgeId);
     }
 
@@ -96,6 +100,38 @@ public final class AgeCatalog {
     /** Returns all structure IDs configured for age-based world generation. */
     public static Set<ResourceLocation> getConfiguredStructureIds() {
         return current.structureUnlockAge().keySet();
+    }
+
+    /** Returns whether a dimension is available at the world's current age. */
+    public static boolean isDimensionUnlocked(ResourceLocation dimensionId, String currentAgeId) {
+        String unlockAgeId = current.dimensionUnlockAge().get(dimensionId);
+        return unlockAgeId == null || isAtLeast(currentAgeId, unlockAgeId);
+    }
+
+    /** Returns the required age for a configured dimension, if one exists. */
+    public static Optional<String> getDimensionUnlockAgeId(ResourceLocation dimensionId) {
+        return Optional.ofNullable(current.dimensionUnlockAge().get(dimensionId));
+    }
+
+    /** Checks whether a dimension has an explicit age unlock rule. */
+    public static boolean isDimensionManaged(ResourceLocation dimensionId) {
+        return current.dimensionUnlockAge().containsKey(dimensionId);
+    }
+
+    /** Checks whether a placed feature is available at the world's current age. */
+    public static boolean isPlacedFeatureUnlocked(ResourceLocation featureId, String currentAgeId) {
+        String unlockAgeId = current.placedFeatureUnlockAge().get(featureId);
+        return unlockAgeId == null || isAtLeast(currentAgeId, unlockAgeId);
+    }
+
+    /** Checks whether a placed feature has an explicit age rule. */
+    public static boolean isPlacedFeatureManaged(ResourceLocation featureId) {
+        return current.placedFeatureUnlockAge().containsKey(featureId);
+    }
+
+    /** Returns the opt-in retro-generation rules keyed by placed-feature ID. */
+    public static Map<ResourceLocation, PlacedFeatureRetroRule> getPlacedFeatureRetroRules() {
+        return current.placedFeatureRetroRules();
     }
 
     /** Checks an item's explicit exception age first, then falls back to its mod's namespace lock. */
@@ -156,9 +192,13 @@ public final class AgeCatalog {
         Map<String, String> idByDisplayName = new HashMap<>();
         Map<String, String> modUnlockAge = new HashMap<>();
         Map<String, Set<String>> wildSpawnAges = new HashMap<>();
+        Map<ResourceLocation, Set<String>> wildSpawnEntityAges = new HashMap<>();
         Map<ResourceLocation, String> recipeUnlockAge = new HashMap<>();
         Map<ResourceLocation, String> itemUnlockAge = new HashMap<>();
         Map<ResourceLocation, String> structureUnlockAge = new HashMap<>();
+        Map<ResourceLocation, String> placedFeatureUnlockAge = new HashMap<>();
+        Map<ResourceLocation, String> dimensionUnlockAge = new HashMap<>();
+        Map<ResourceLocation, PlacedFeatureRetroRule> placedFeatureRetroRules = new HashMap<>();
 
         for (Map.Entry<ResourceLocation, JsonElement> entry : resources.entrySet()) {
             JsonObject json = GsonHelper.convertToJsonObject(entry.getValue(), entry.getKey().toString());
@@ -207,6 +247,16 @@ public final class AgeCatalog {
                 }
                 wildSpawnAges.computeIfAbsent(modId, ignored -> new HashSet<>()).add(id);
             }
+            JsonArray wildSpawnEntityIds = json.has("wild_spawn_entity_ids")
+                ? GsonHelper.getAsJsonArray(json, "wild_spawn_entity_ids")
+                : new JsonArray();
+            for (JsonElement entityIdElement : wildSpawnEntityIds) {
+                ResourceLocation entityId = ResourceLocation.tryParse(entityIdElement.getAsString());
+                if (entityId == null) {
+                    throw new IllegalArgumentException("Invalid wild-spawn entity ID '" + entityIdElement.getAsString() + "' in age " + id);
+                }
+                wildSpawnEntityAges.computeIfAbsent(entityId, ignored -> new HashSet<>()).add(id);
+            }
             List<ResourceLocation> unlockRecipeIds = new ArrayList<>();
             JsonArray recipeIds = json.has("unlock_recipe_ids")
                 ? GsonHelper.getAsJsonArray(json, "unlock_recipe_ids")
@@ -247,6 +297,60 @@ public final class AgeCatalog {
                     throw new IllegalArgumentException("Structure is assigned to more than one unlock age: " + structureId);
                 }
             }
+            JsonArray placedFeatureIds = json.has("unlock_placed_feature_ids")
+                ? GsonHelper.getAsJsonArray(json, "unlock_placed_feature_ids")
+                : new JsonArray();
+            for (JsonElement featureIdElement : placedFeatureIds) {
+                ResourceLocation featureId = ResourceLocation.tryParse(featureIdElement.getAsString());
+                if (featureId == null) {
+                    throw new IllegalArgumentException("Invalid placed feature ID '" + featureIdElement.getAsString() + "' in age " + id);
+                }
+                if (placedFeatureUnlockAge.putIfAbsent(featureId, id) != null) {
+                    throw new IllegalArgumentException("Placed feature is assigned to more than one unlock age: " + featureId);
+                }
+            }
+            JsonArray dimensionIds = json.has("unlock_dimension_ids")
+                ? GsonHelper.getAsJsonArray(json, "unlock_dimension_ids")
+                : new JsonArray();
+            for (JsonElement dimensionIdElement : dimensionIds) {
+                ResourceLocation dimensionId = ResourceLocation.tryParse(dimensionIdElement.getAsString());
+                if (dimensionId == null) {
+                    throw new IllegalArgumentException("Invalid dimension ID '" + dimensionIdElement.getAsString() + "' in age " + id);
+                }
+                if (dimensionUnlockAge.putIfAbsent(dimensionId, id) != null) {
+                    throw new IllegalArgumentException("Dimension is assigned to more than one unlock age: " + dimensionId);
+                }
+            }
+            JsonArray retroFeatureEntries = json.has("retro_generate_placed_features")
+                ? GsonHelper.getAsJsonArray(json, "retro_generate_placed_features")
+                : new JsonArray();
+            for (JsonElement retroFeatureElement : retroFeatureEntries) {
+                JsonObject retroFeature = GsonHelper.convertToJsonObject(retroFeatureElement, "retro-generation rule in age " + id);
+                String featureIdString = GsonHelper.getAsString(retroFeature, "id");
+                ResourceLocation featureId = ResourceLocation.tryParse(featureIdString);
+                if (featureId == null) {
+                    throw new IllegalArgumentException("Invalid retro-generated placed feature ID '" + featureIdString + "' in age " + id);
+                }
+                int radiusChunks = GsonHelper.getAsInt(retroFeature, "radius_chunks");
+                if (radiusChunks < 0 || radiusChunks > 8) {
+                    throw new IllegalArgumentException("Placed feature retro-generation radius must be between 0 and 8 for " + featureId);
+                }
+                JsonArray retroDimensions = GsonHelper.getAsJsonArray(retroFeature, "dimensions");
+                Set<ResourceLocation> dimensionSet = new HashSet<>();
+                for (JsonElement dimensionElement : retroDimensions) {
+                    ResourceLocation dimensionId = ResourceLocation.tryParse(dimensionElement.getAsString());
+                    if (dimensionId == null) {
+                        throw new IllegalArgumentException("Invalid retro-generation dimension ID '" + dimensionElement.getAsString() + "' for " + featureId);
+                    }
+                    dimensionSet.add(dimensionId);
+                }
+                if (placedFeatureRetroRules.putIfAbsent(
+                    featureId,
+                    new PlacedFeatureRetroRule(id, radiusChunks, Set.copyOf(dimensionSet))
+                ) != null) {
+                    throw new IllegalArgumentException("Placed feature has more than one retro-generation rule: " + featureId);
+                }
+            }
             ages.add(new Age(id, name, order, List.copyOf(lockedModIds), List.copyOf(unlockRecipeIds)));
         }
 
@@ -265,6 +369,23 @@ public final class AgeCatalog {
                 throw new IllegalArgumentException("Structure " + entry.getKey() + " references unknown age " + entry.getValue());
             }
         }
+        for (Map.Entry<ResourceLocation, String> entry : placedFeatureUnlockAge.entrySet()) {
+            if (!ids.contains(entry.getValue())) {
+                throw new IllegalArgumentException("Placed feature " + entry.getKey() + " references unknown age " + entry.getValue());
+            }
+        }
+        for (Map.Entry<ResourceLocation, String> entry : dimensionUnlockAge.entrySet()) {
+            if (!ids.contains(entry.getValue())) {
+                throw new IllegalArgumentException("Dimension " + entry.getKey() + " references unknown age " + entry.getValue());
+            }
+        }
+        for (Map.Entry<ResourceLocation, PlacedFeatureRetroRule> entry : placedFeatureRetroRules.entrySet()) {
+            if (!entry.getValue().unlockAgeId().equals(placedFeatureUnlockAge.get(entry.getKey()))) {
+                throw new IllegalArgumentException(
+                    "Retro-generated placed feature " + entry.getKey() + " must be unlocked in the same age that enables retro-generation"
+                );
+            }
+        }
 
         if (ages.isEmpty()) {
             throw new IllegalArgumentException("The age catalog must contain at least one age");
@@ -274,15 +395,25 @@ public final class AgeCatalog {
         for (Age age : ages) {
             byId.put(age.id(), age);
         }
+        Map<ResourceLocation, Set<String>> frozenWildSpawnEntityAges = new HashMap<>();
+        wildSpawnEntityAges.forEach((entityId, allowedAges) -> frozenWildSpawnEntityAges.put(entityId, Set.copyOf(allowedAges)));
+        Set<String> wildSpawnEntityNamespaces = wildSpawnEntityAges.keySet().stream()
+            .map(ResourceLocation::getNamespace)
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
         return new Snapshot(
             List.copyOf(ages),
             Map.copyOf(byId),
             Map.copyOf(idByDisplayName),
             Map.copyOf(modUnlockAge),
             freezeSets(wildSpawnAges),
+            Map.copyOf(frozenWildSpawnEntityAges),
+            wildSpawnEntityNamespaces,
             Map.copyOf(recipeUnlockAge),
             Map.copyOf(itemUnlockAge),
-            Map.copyOf(structureUnlockAge)
+            Map.copyOf(structureUnlockAge),
+            Map.copyOf(placedFeatureUnlockAge),
+            Map.copyOf(dimensionUnlockAge),
+            Map.copyOf(placedFeatureRetroRules)
         );
     }
 
@@ -308,6 +439,10 @@ public final class AgeCatalog {
     ) {
     }
 
+    /** Describes the bounded dimensions in which a placed feature may be retro-generated. */
+    public record PlacedFeatureRetroRule(String unlockAgeId, int radiusChunks, Set<ResourceLocation> dimensions) {
+    }
+
     /** Immutable indexes used to answer age, display-name, and mod-unlock lookups. */
     record Snapshot(
         List<Age> ages,
@@ -315,13 +450,20 @@ public final class AgeCatalog {
         Map<String, String> idByDisplayName,
         Map<String, String> modUnlockAge,
         Map<String, Set<String>> wildSpawnAges,
+        Map<ResourceLocation, Set<String>> wildSpawnEntityAges,
+        Set<String> wildSpawnEntityNamespaces,
         Map<ResourceLocation, String> recipeUnlockAge,
         Map<ResourceLocation, String> itemUnlockAge,
-        Map<ResourceLocation, String> structureUnlockAge
+        Map<ResourceLocation, String> structureUnlockAge,
+        Map<ResourceLocation, String> placedFeatureUnlockAge,
+        Map<ResourceLocation, String> dimensionUnlockAge,
+        Map<ResourceLocation, PlacedFeatureRetroRule> placedFeatureRetroRules
     ) {
         /** Creates the empty pre-reload state used before datapack resources are available. */
         private static Snapshot empty() {
-            return new Snapshot(List.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of());
+            return new Snapshot(
+                List.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Set.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of()
+            );
         }
     }
 
@@ -341,6 +483,7 @@ public final class AgeCatalog {
                 net.minecraft.server.MinecraftServer server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
                 if (server != null) {
                     RetroGenerationScheduler.onAgeChanged(server, AgeSavedData.get(server).getCurrentAgeId());
+                    DimensionAccessEvents.enforceCurrentDimensions(server);
                     AgeCraftingRules.refreshOpenCraftingMenus(server);
                     AgeRecipeBookSync.syncAll(server);
                     AgeRecipeNetworking.sendToAll(server);

@@ -22,11 +22,10 @@ public final class AgeMobSpawnEvents {
 
         ServerLevelAccessor levelAccessor = event.getLevel();
         ServerLevel level = levelAccessor.getLevel();
-        String modId = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE
-            .getKey(event.getEntityType())
-            .getNamespace();
+        net.minecraft.resources.ResourceLocation entityId = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE
+            .getKey(event.getEntityType());
         String currentAgeId = AgeSavedData.get(level.getServer()).getCurrentAgeId();
-        if (!AgeCatalog.isWildSpawnAllowed(modId, currentAgeId)) {
+        if (!AgeCatalog.isWildSpawnAllowed(entityId, currentAgeId)) {
             event.setResult(MobSpawnEvent.SpawnPlacementCheck.Result.FAIL);
         }
     }

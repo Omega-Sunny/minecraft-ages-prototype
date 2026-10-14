@@ -9,7 +9,11 @@
     "offroad",
     "simulated",
     "copycats",
-    "createdeco"
+    "createdeco",
+    "aether"
+  ],
+  "unlock_dimension_ids": [
+    "aether:the_aether"
   ],
   "unlock_recipe_ids": [
     "create:mixing/brass_ingot"
