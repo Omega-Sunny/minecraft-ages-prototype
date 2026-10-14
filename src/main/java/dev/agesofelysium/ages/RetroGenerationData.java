@@ -1,9 +1,7 @@
 package dev.agesofelysium.ages;
 
-import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Set;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
